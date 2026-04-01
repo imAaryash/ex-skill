@@ -171,7 +171,7 @@ exes/{slug}/
   回滚版本：说"回滚到 v2"
   再建一个：说 /create-ex（可以建任意多个前任，每个独立存储）
   列出所有：说 /list-exes
-  放下 TA：说 /let-go {slug}（删除该前任 Skill）
+  放下 TA：说 /move-on {slug}（删除该前任 Skill）
 ```
 
 ---
