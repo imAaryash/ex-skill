@@ -251,6 +251,22 @@ create-ex/
 
 ---
 
+## Recommended Chat Export Tools
+
+> Auto-decryption is still being refined and may have some bugs. If it fails, you can use these open-source tools to manually export your chat history first, then paste or import into this project.
+
+These are independent open-source projects. This project does not include their code — we only support their export formats in our parser:
+
+| Tool | Platform | Description |
+|------|----------|-------------|
+| [WeChatMsg](https://github.com/LC044/WeChatMsg) | Windows | WeChat chat history export, multiple formats |
+| [PyWxDump](https://github.com/xaoyaoo/PyWxDump) | Windows | WeChat database decryption & export |
+| [留痕](https://github.com/greyovo/留痕) | macOS | WeChat chat history export (recommended for Mac users) |
+
+> Tool recommendations via [@therealXiaomanChu](https://github.com/therealXiaomanChu). Thanks to all open-source authors — together we build cyber-immortality!
+
+---
+
 ## Star History
 
 <a href="https://www.star-history.com/?repos=titanwings%2Fex-skill&type=date&legend=top-left">
