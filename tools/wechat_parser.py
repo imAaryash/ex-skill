@@ -168,7 +168,10 @@ def find_contact_wxid(db_dir: str, target_name: str) -> str | None:
         if (target_lower in c["wxid"].lower() or
                 target_lower in c["remark"].lower() or
                 target_lower in c["nickname"].lower()):
-            print(f"模糊匹配到联系人：{c['remark'] or c['nickname']} ({c['wxid']})")
+            print(tr(
+                f"模糊匹配到联系人：{c['remark'] or c['nickname']} ({c['wxid']})",
+                f"Fuzzy matched contact: {c['remark'] or c['nickname']} ({c['wxid']})",
+            ))
             return c["wxid"]
 
     return None
@@ -659,34 +662,34 @@ def main():
         description="Chat parser (WeChat + iMessage)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-示例：
-  # 微信 — 列出所有联系人
+Examples:
+  # WeChat - list contacts
   python wechat_parser.py --db-dir ./decrypted/ --list-contacts
 
-  # 微信 — 提取指定联系人消息
-  python wechat_parser.py --db-dir ./decrypted/ --target "柳智敏" --output messages.txt
+  # WeChat - extract one contact's messages
+  python wechat_parser.py --db-dir ./decrypted/ --target "contact_name" --output messages.txt
 
-  # iMessage — 列出所有联系人（macOS）
+  # iMessage - list contacts (macOS)
   python wechat_parser.py --imessage --db ~/Library/Messages/chat.db --list-contacts
 
-  # iMessage — 提取消息
+  # iMessage - extract messages
   python wechat_parser.py --imessage --db ~/Library/Messages/chat.db \\
       --target "+1xxxxxxxxxx" --output messages.txt
 
-  # 从文本导出解析（通用）
-  python wechat_parser.py --txt ./chat.txt --target "柳智敏" --output messages.txt
+  # Parse exported text (generic)
+  python wechat_parser.py --txt ./chat.txt --target "contact_name" --output messages.txt
         """
     )
 
-    parser.add_argument("--imessage", action="store_true", help="使用 iMessage 模式（macOS chat.db）")
-    parser.add_argument("--db-dir", help="解密后的微信数据库目录")
-    parser.add_argument("--db", help="单个 .db 文件（微信或 iMessage）")
-    parser.add_argument("--txt", help="手动导出的文本文件")
-    parser.add_argument("--target", help="目标联系人名称（微信名/备注名，或 iMessage 手机号/Apple ID）")
-    parser.add_argument("--output", default=None, help="输出文件路径（默认打印到 stdout）")
-    parser.add_argument("--list-contacts", action="store_true", help="列出所有联系人")
-    parser.add_argument("--no-context", action="store_true", help="不包含完整对话片段")
-    parser.add_argument("--json", action="store_true", help="以 JSON 格式输出原始消息")
+    parser.add_argument("--imessage", action="store_true", help="Use iMessage mode (macOS chat.db)")
+    parser.add_argument("--db-dir", help="Directory containing decrypted WeChat databases")
+    parser.add_argument("--db", help="Single .db file (WeChat or iMessage)")
+    parser.add_argument("--txt", help="Path to exported text chat file")
+    parser.add_argument("--target", help="Target contact (WeChat name/remark, or iMessage phone/Apple ID)")
+    parser.add_argument("--output", default=None, help="Output file path (default: print to stdout)")
+    parser.add_argument("--list-contacts", action="store_true", help="List all contacts")
+    parser.add_argument("--no-context", action="store_true", help="Exclude full conversation context")
+    parser.add_argument("--json", action="store_true", help="Output raw messages in JSON")
     parser.add_argument("--lang", choices=["zh", "en"], default="zh", help="CLI/output language")
 
     args = parser.parse_args()
@@ -739,7 +742,20 @@ def main():
 
         if args.txt:
             print(tr(f"从文本文件解析：{args.txt}", f"Parsing from text export: {args.txt}"))
-            messages = parse_txt_export(args.txt, args.target)
+            if not Path(args.txt).exists():
+                print(tr(
+                    f"错误：找不到文本文件 {args.txt}",
+                    f"Error: text export file not found: {args.txt}",
+                ), file=sys.stderr)
+                sys.exit(1)
+            try:
+                messages = parse_txt_export(args.txt, args.target)
+            except OSError as e:
+                print(tr(
+                    f"错误：读取文本文件失败：{e}",
+                    f"Error: failed to read text export file: {e}",
+                ), file=sys.stderr)
+                sys.exit(1)
 
         elif args.db:
             print(tr(f"从单个数据库解析：{args.db}", f"Parsing from single database: {args.db}"))

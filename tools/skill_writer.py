@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 """
-前任 Skill 文件写入器
+Ex Skill writer.
 
-负责将生成的 persona.md 写入到正确的目录结构，
-并生成 meta.json 和完整的 SKILL.md。
+Creates and updates ex skill folders with persona.md, SKILL.md, and meta.json.
 
-用法：
+Usage:
     python skill_writer.py --action create --slug xiaomei --meta meta.json \
         --persona persona_content.md --base-dir ./exes
 
@@ -108,7 +107,7 @@ def get_preferred_language(meta: dict, cli_language: Optional[str] = None) -> st
 
 
 def slugify(name: str) -> str:
-    """将姓名转为 slug"""
+    """Convert a display name to a filesystem-safe slug."""
     try:
         from pypinyin import lazy_pinyin
         parts = lazy_pinyin(name)
@@ -129,7 +128,7 @@ def slugify(name: str) -> str:
 
 
 def build_identity_string(meta: dict, language: str = "zh") -> str:
-    """从 meta 构建关系描述字符串"""
+    """Build an identity summary string from metadata."""
     profile = meta.get("profile", {})
     parts = []
 
@@ -177,7 +176,7 @@ def create_ex_skill(
     persona_content: str,
     language: str = "zh",
 ) -> Path:
-    """创建新的前任 Skill 目录结构"""
+    """Create a new ex skill directory structure."""
 
     skill_dir = base_dir / slug
     skill_dir.mkdir(parents=True, exist_ok=True)
@@ -321,7 +320,7 @@ def update_ex_skill(
 
 
 def list_exes(base_dir: Path) -> list:
-    """列出所有已创建的前任 Skill"""
+    """List all existing ex skills."""
     exes = []
 
     if not base_dir.exists():
@@ -355,11 +354,11 @@ def list_exes(base_dir: Path) -> list:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Ex Skill file writer")
     parser.add_argument("--action", required=True, choices=["create", "update", "list"])
-    parser.add_argument("--slug", help="前任 slug（用于目录名）")
-    parser.add_argument("--name", help="前任称呼")
-    parser.add_argument("--meta", help="meta.json 文件路径")
-    parser.add_argument("--persona", help="persona.md 内容文件路径")
-    parser.add_argument("--persona-patch", help="persona.md 增量更新内容文件路径")
+    parser.add_argument("--slug", help="Ex skill slug (folder name)")
+    parser.add_argument("--name", help="Display name for the ex skill")
+    parser.add_argument("--meta", help="Path to meta.json")
+    parser.add_argument("--persona", help="Path to persona.md content file")
+    parser.add_argument("--persona-patch", help="Path to incremental persona patch file")
     parser.add_argument(
         "--base-dir",
         default="./exes",
@@ -386,7 +385,7 @@ def main() -> None:
             else:
                 print(f"已创建 {len(exes)} 个前任 Skill：\n")
             for e in exes:
-                updated = e["updated_at"][:10] if e["updated_at"] else "未知"
+                updated = e["updated_at"][:10] if e["updated_at"] else ("unknown" if lang == "en" else "未知")
                 print(f"  [{e['slug']}]  {e['name']} — {e['identity']}")
                 if lang == "en":
                     print(f"    Version: {e['version']}  Messages: {e['message_count']}  Corrections: {e['corrections_count']}  Updated: {updated}")

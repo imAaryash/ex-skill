@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-版本管理器（前任.skill）
+Ex skill version manager.
 
-负责 Skill 文件的版本存档和回滚。
+Supports listing, rollback, and cleanup of archived versions.
 
-用法：
+Usage:
     python version_manager.py --action list --slug xiaomei --base-dir ./exes
     python version_manager.py --action rollback --slug xiaomei --version v2 --base-dir ./exes
     python version_manager.py --action cleanup --slug xiaomei --base-dir ./exes
@@ -110,9 +110,9 @@ def cleanup_old_versions(skill_dir: Path, max_versions: int = MAX_VERSIONS, lang
 def main():
     parser = argparse.ArgumentParser(description="Ex Skill version manager")
     parser.add_argument("--action", required=True, choices=["list", "rollback", "cleanup"])
-    parser.add_argument("--slug", required=True, help="前任 slug")
-    parser.add_argument("--version", help="目标版本号（rollback 时使用）")
-    parser.add_argument("--base-dir", default="./exes", help="前任 Skill 根目录")
+    parser.add_argument("--slug", required=True, help="Ex skill slug")
+    parser.add_argument("--version", help="Target version for rollback (e.g. v2)")
+    parser.add_argument("--base-dir", default="./exes", help="Root ex skill directory")
     parser.add_argument("--lang", choices=["zh", "en"], default="zh", help="CLI language")
 
     args = parser.parse_args()

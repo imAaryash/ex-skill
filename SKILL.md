@@ -65,7 +65,7 @@ Please choose your preferred language for this session:
 
 ## Step 1：基础信息录入
 
-> 参考 `prompts/intake.md` 执行
+> `preferred_language = zh` 时参考 `prompts/intake.md`；`preferred_language = en` 时参考 `prompts_en/intake.md`
 
 开场白（按 `preferred_language` 输出）：
 ```
@@ -123,9 +123,9 @@ python tools/wechat_parser.py --imessage --target "{用户提供的手机号或A
 
 收到聊天记录后：
 
-1. 按 `prompts/chat_analyzer.md` 分析聊天记录
-2. 按 `prompts/persona_analyzer.md` 综合基础信息 + 分析结果，输出结构化人格数据
-3. 按 `prompts/persona_builder.md` 生成 `persona.md` 草稿
+1. `preferred_language = zh`：按 `prompts/chat_analyzer.md`、`prompts/persona_analyzer.md`、`prompts/persona_builder.md`
+2. `preferred_language = en`：按 `prompts_en/chat_analyzer.md`、`prompts_en/persona_analyzer.md`、`prompts_en/persona_builder.md`
+3. 生成 `persona.md` 草稿
 
 调用提示文件时，传入 `preferred_language`，并要求输出语言与其保持一致。
 
@@ -237,12 +237,12 @@ python tools/skill_writer.py --action list --base-dir ./exes
 
 ### 追加记录
 用户说"追加记录"或粘贴新聊天记录：
-→ 按 `prompts/merger.md` 执行增量 merge
+→ `preferred_language = zh` 用 `prompts/merger.md`；`preferred_language = en` 用 `prompts_en/merger.md`
 → 调用 `skill_writer.py --action update` 更新文件
 
 ### 对话纠正
 用户说"这不对"或"TA 不会这样"：
-→ 按 `prompts/correction_handler.md` 识别并写入 Correction 层
+→ `preferred_language = zh` 用 `prompts/correction_handler.md`；`preferred_language = en` 用 `prompts_en/correction_handler.md`
 → 调用 `skill_writer.py --action update --persona-patch` 更新文件
 
 ### 版本管理
