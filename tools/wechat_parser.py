@@ -37,12 +37,13 @@ import sys
 import argparse
 from pathlib import Path
 from datetime import datetime
+from typing import Optional
 
 
 CLI_LANG = "zh"
 
 
-def normalize_language(language: str | None) -> str:
+def normalize_language(language: Optional[str]) -> str:
     value = (language or "").strip().lower()
     if value in {"en", "english"}:
         return "en"
@@ -102,7 +103,7 @@ ORDER BY NickName
 
 # ─── Database parsing ───────────────────────────────────────────────────────────
 
-def open_db(db_path: str) -> sqlite3.Connection | None:
+def open_db(db_path: str) -> Optional[sqlite3.Connection]:
     """Open a SQLite database in read-only mode."""
     try:
         conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
@@ -150,7 +151,7 @@ def list_contacts(db_dir: str) -> list[dict]:
         conn.close()
 
 
-def find_contact_wxid(db_dir: str, target_name: str) -> str | None:
+def find_contact_wxid(db_dir: str, target_name: str) -> Optional[str]:
     """Find a contact wxid by name (nickname/remark/wxid)."""
     contacts = list_contacts(db_dir)
     target_lower = target_name.lower()
@@ -177,7 +178,7 @@ def find_contact_wxid(db_dir: str, target_name: str) -> str | None:
     return None
 
 
-def extract_messages_from_db(db_path: str, target_wxid: str | None = None) -> list[dict]:
+def extract_messages_from_db(db_path: str, target_wxid: Optional[str] = None) -> list[dict]:
     """Extract messages from a single MSG*.db file."""
     conn = open_db(db_path)
     if not conn:
@@ -274,7 +275,7 @@ def _extract_text_from_xml(xml_content: str) -> str:
     return ""
 
 
-def extract_messages_from_dir(db_dir: str, target_wxid: str | None = None) -> list[dict]:
+def extract_messages_from_dir(db_dir: str, target_wxid: Optional[str] = None) -> list[dict]:
     """Extract messages from all MSG*.db files in a directory and sort by time."""
     db_dir = Path(db_dir)
     all_messages = []

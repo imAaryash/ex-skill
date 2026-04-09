@@ -13,12 +13,13 @@ import hashlib
 import argparse
 import subprocess
 from pathlib import Path
+from typing import Optional
 
 
 CLI_LANG = "zh"
 
 
-def normalize_language(language: str | None) -> str:
+def normalize_language(language: Optional[str]) -> str:
     value = (language or "").strip().lower()
     if value in {"en", "english"}:
         return "en"
@@ -37,7 +38,7 @@ IS_MACOS = sys.platform == "darwin"
 
 # ─── Process discovery (cross-platform) ───────────────────
 
-def find_wechat_pid() -> int | None:
+def find_wechat_pid() -> Optional[int]:
     """Find the PID of the running WeChat process."""
     try:
         import psutil
@@ -62,7 +63,7 @@ def find_wechat_pid() -> int | None:
 
 # ─── Data directory discovery (cross-platform) ────────────
 
-def get_wechat_data_dir() -> str | None:
+def get_wechat_data_dir() -> Optional[str]:
     """Get the WeChat user data directory."""
     if IS_WINDOWS:
         documents = Path.home() / "Documents" / "WeChat Files"
@@ -128,7 +129,7 @@ def find_db_files(db_dir: str) -> list[str]:
 
 # ─── Windows key extraction ────────────────────────────────
 
-def extract_key_windows(pid: int) -> str | None:
+def extract_key_windows(pid: int) -> Optional[str]:
     """Extract database key from WeChat process memory on Windows."""
     try:
         import pymem
@@ -190,7 +191,7 @@ def extract_key_windows(pid: int) -> str | None:
     return key_candidates[0].hex()
 
 
-def _fallback_key_windows(pm) -> str | None:
+def _fallback_key_windows(pm) -> Optional[str]:
     """Windows 备用密钥提取（适用于微信 3.9.x 以下版本）"""
     known_prefixes = [
         bytes.fromhex("0400000020000000"),
@@ -231,7 +232,7 @@ def _fallback_key_windows(pm) -> str | None:
 
 # ─── macOS key extraction ──────────────────────────────────
 
-def extract_key_macos(pid: int) -> str | None:
+def extract_key_macos(pid: int) -> Optional[str]:
     """
     Extract database key from WeChat process memory on macOS.
 
@@ -254,7 +255,7 @@ def extract_key_macos(pid: int) -> str | None:
     return None
 
 
-def _extract_key_macos_lldb(pid: int) -> str | None:
+def _extract_key_macos_lldb(pid: int) -> Optional[str]:
     """Extract key by reading WeChat process memory through lldb."""
     try:
         # Build lldb script
@@ -321,7 +322,7 @@ else:
     return _extract_key_macos_vmmap(pid)
 
 
-def _extract_key_macos_vmmap(pid: int) -> str | None:
+def _extract_key_macos_vmmap(pid: int) -> Optional[str]:
     """Locate candidate memory regions via vmmap (manual-assist fallback)."""
     try:
         result = subprocess.run(
@@ -339,7 +340,7 @@ def _extract_key_macos_vmmap(pid: int) -> str | None:
     return None
 
 
-def _extract_key_macos_keychain() -> str | None:
+def _extract_key_macos_keychain() -> Optional[str]:
     """Try to read WeChat key material from macOS Keychain (legacy fallback)."""
     try:
         result = subprocess.run(
@@ -355,7 +356,7 @@ def _extract_key_macos_keychain() -> str | None:
 
 # ─── Cross-platform key extraction entrypoint ─────────────
 
-def extract_key_from_memory(pid: int) -> str | None:
+def extract_key_from_memory(pid: int) -> Optional[str]:
     """Dispatch key extraction by platform."""
     if IS_WINDOWS:
         return extract_key_windows(pid)
@@ -515,8 +516,15 @@ def find_msg_dir(wxid_dir: Path) -> Path:
 # ─── Main entrypoint ───────────────────────────────────────
 
 def main():
+    global CLI_LANG
+
+    pre_parser = argparse.ArgumentParser(add_help=False)
+    pre_parser.add_argument("--lang", choices=["zh", "en"], default="zh")
+    pre_args, _ = pre_parser.parse_known_args()
+    CLI_LANG = normalize_language(pre_args.lang)
+
     if not IS_WINDOWS and not IS_MACOS:
-        print("Error: this tool supports only Windows and macOS", file=sys.stderr)
+        print(tr("错误：此工具仅支持 Windows 和 macOS", "Error: this tool supports only Windows and macOS"), file=sys.stderr)
         sys.exit(1)
 
     parser = argparse.ArgumentParser(
@@ -546,7 +554,6 @@ Examples:
     parser.add_argument("--lang", choices=["zh", "en"], default="zh", help="CLI language")
 
     args = parser.parse_args()
-    global CLI_LANG
     CLI_LANG = normalize_language(args.lang)
 
     platform_name = "Windows" if IS_WINDOWS else "macOS"

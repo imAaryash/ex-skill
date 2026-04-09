@@ -434,9 +434,24 @@ def main() -> None:
             print(err, file=sys.stderr)
             sys.exit(1)
 
+        update_lang = lang
+        if lang_override is None:
+            meta_path = skill_dir / "meta.json"
+            if meta_path.exists():
+                try:
+                    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+                    update_lang = get_preferred_language(meta)
+                except Exception:
+                    update_lang = "zh"
+
+        if not args.persona_patch:
+            err = "Error: update requires --persona-patch" if update_lang == "en" else "错误：update 操作需要 --persona-patch"
+            print(err, file=sys.stderr)
+            sys.exit(1)
+
         persona_patch = Path(args.persona_patch).read_text(encoding="utf-8") if args.persona_patch else None
-        new_version = update_ex_skill(skill_dir, persona_patch, language=None)
-        if lang == "en":
+        new_version = update_ex_skill(skill_dir, persona_patch, language=lang_override)
+        if update_lang == "en":
             print(f"✅ Skill updated to {new_version}: {skill_dir}")
         else:
             print(f"✅ Skill 已更新到 {new_version}：{skill_dir}")

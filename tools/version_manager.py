@@ -18,11 +18,12 @@ import argparse
 import sys
 from pathlib import Path
 from datetime import datetime, timezone
+from typing import Optional
 
 MAX_VERSIONS = 10
 
 
-def normalize_language(language: str | None) -> str:
+def normalize_language(language: Optional[str]) -> str:
     value = (language or "").strip().lower()
     if value in {"en", "english"}:
         return "en"
