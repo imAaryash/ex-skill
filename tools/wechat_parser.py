@@ -39,6 +39,20 @@ from pathlib import Path
 from datetime import datetime
 
 
+CLI_LANG = "zh"
+
+
+def normalize_language(language: str | None) -> str:
+    value = (language or "").strip().lower()
+    if value in {"en", "english"}:
+        return "en"
+    return "zh"
+
+
+def tr(zh: str, en: str) -> str:
+    return en if CLI_LANG == "en" else zh
+
+
 # ─── 微信 PC 数据库结构 ─────────────────────────────────────────────────────────
 
 # MSG*.db 中的消息表结构（微信 3.x）
@@ -97,8 +111,8 @@ def open_db(db_path: str) -> sqlite3.Connection | None:
         conn.execute("SELECT name FROM sqlite_master LIMIT 1")
         return conn
     except sqlite3.DatabaseError as e:
-        print(f"无法打开数据库 {db_path}：{e}", file=sys.stderr)
-        print("请确认数据库已解密（运行 wechat_decryptor.py）", file=sys.stderr)
+        print(tr(f"无法打开数据库 {db_path}：{e}", f"Cannot open database {db_path}: {e}"), file=sys.stderr)
+        print(tr("请确认数据库已解密（运行 wechat_decryptor.py）", "Please make sure the database is decrypted first (run wechat_decryptor.py)."), file=sys.stderr)
         return None
 
 
@@ -112,7 +126,7 @@ def list_contacts(db_dir: str) -> list[dict]:
     """列出所有联系人（从 MicroMsg.db）"""
     micro_db = Path(db_dir) / "MicroMsg.db"
     if not micro_db.exists():
-        print(f"未找到 MicroMsg.db，尝试从消息数据库推断联系人...", file=sys.stderr)
+        print(tr("未找到 MicroMsg.db，尝试从消息数据库推断联系人...", "MicroMsg.db not found, trying to infer contacts from message databases..."), file=sys.stderr)
         return []
 
     conn = open_db(str(micro_db))
@@ -130,7 +144,7 @@ def list_contacts(db_dir: str) -> list[dict]:
             })
         return contacts
     except Exception as e:
-        print(f"读取联系人失败：{e}", file=sys.stderr)
+        print(tr(f"读取联系人失败：{e}", f"Failed to read contacts: {e}"), file=sys.stderr)
         return []
     finally:
         conn.close()
@@ -237,7 +251,7 @@ def extract_messages_from_db(db_path: str, target_wxid: str | None = None) -> li
             })
 
     except Exception as e:
-        print(f"读取消息失败 ({db_path})：{e}", file=sys.stderr)
+        print(tr(f"读取消息失败 ({db_path})：{e}", f"Failed to read messages ({db_path}): {e}"), file=sys.stderr)
     finally:
         conn.close()
 
@@ -277,13 +291,13 @@ def extract_messages_from_dir(db_dir: str, target_wxid: str | None = None) -> li
                 db_files.append(p)
 
     if not db_files:
-        print(f"在 {db_dir} 下未找到 MSG*.db 文件", file=sys.stderr)
+        print(tr(f"在 {db_dir} 下未找到 MSG*.db 文件", f"No MSG*.db files found under {db_dir}"), file=sys.stderr)
         return []
 
     for db_file in db_files:
         msgs = extract_messages_from_db(str(db_file), target_wxid)
         all_messages.extend(msgs)
-        print(f"  {db_file.name}: {len(msgs)} 条消息")
+        print(tr(f"  {db_file.name}: {len(msgs)} 条消息", f"  {db_file.name}: {len(msgs)} messages"))
 
     # 按时间排序
     all_messages.sort(key=lambda x: x["timestamp"])
@@ -358,7 +372,7 @@ def list_imessage_contacts(db_path: str) -> list[dict]:
         """).fetchall()
         return [{"handle": row["handle_id"], "count": row["message_count"]} for row in rows]
     except Exception as e:
-        print(f"读取 iMessage 联系人失败：{e}", file=sys.stderr)
+        print(tr(f"读取 iMessage 联系人失败：{e}", f"Failed to read iMessage contacts: {e}"), file=sys.stderr)
         return []
     finally:
         conn.close()
@@ -390,17 +404,17 @@ def extract_imessage_messages(db_path: str, target_handle: str) -> list[dict]:
         ).fetchall()
 
         if not handle_rows:
-            print(f"未找到联系人 '{target_handle}'，尝试模糊匹配...", file=sys.stderr)
+            print(tr(f"未找到联系人 '{target_handle}'，尝试模糊匹配...", f"Contact '{target_handle}' not found, trying fuzzy match..."), file=sys.stderr)
             handle_rows = conn.execute("SELECT ROWID, id FROM handle").fetchall()
             handle_rows = [r for r in handle_rows if target_handle.lower() in r["id"].lower()]
 
         if not handle_rows:
-            print(f"未找到 '{target_handle}'，使用 --list-contacts 查看所有联系人", file=sys.stderr)
+            print(tr(f"未找到 '{target_handle}'，使用 --list-contacts 查看所有联系人", f"No match for '{target_handle}'. Use --list-contacts to view all contacts."), file=sys.stderr)
             return []
 
         handle_ids = [r["ROWID"] for r in handle_rows]
         matched_handle = handle_rows[0]["id"]
-        print(f"匹配到联系人：{matched_handle}（共 {len(handle_ids)} 个 handle）")
+        print(tr(f"匹配到联系人：{matched_handle}（共 {len(handle_ids)} 个 handle）", f"Matched contact: {matched_handle} ({len(handle_ids)} handles)"))
 
         placeholders = ",".join("?" * len(handle_ids))
         rows = conn.execute(f"""
@@ -454,7 +468,7 @@ def extract_imessage_messages(db_path: str, target_handle: str) -> list[dict]:
             })
 
     except Exception as e:
-        print(f"读取 iMessage 消息失败：{e}", file=sys.stderr)
+        print(tr(f"读取 iMessage 消息失败：{e}", f"Failed to read iMessage messages: {e}"), file=sys.stderr)
         import traceback
         traceback.print_exc()
     finally:
@@ -544,17 +558,19 @@ def extract_conversation_threads(messages: list[dict], window_size: int = 10) ->
 
 # ─── 输出格式化 ────────────────────────────────────────────────────────────────
 
-def format_output(target_name: str, classified: dict, include_context: bool = True, source: str = "微信") -> str:
+def format_output(target_name: str, classified: dict, include_context: bool = True, source: str = "微信", language: str = "zh") -> str:
     """格式化输出供 AI 分析"""
+    is_en = normalize_language(language) == "en"
+    i_label = "Me" if is_en else "我"
     lines = [
-        f"# {source}聊天记录提取结果",
-        f"目标人物：{target_name}",
-        f"TA 发送的消息数：{classified['total_their_count']}",
-        f"对话总消息数：{classified['total_count']}",
+        f"# {source} {('Chat Extraction Result' if is_en else '聊天记录提取结果')}",
+        f"{('Target' if is_en else '目标人物')}：{target_name}",
+        f"{('Messages sent by TA' if is_en else 'TA 发送的消息数')}：{classified['total_their_count']}",
+        f"{('Total messages' if is_en else '对话总消息数')}：{classified['total_count']}",
         "",
         "---",
         "",
-        "## 长消息（>50字，权重最高：观点/情绪/解释）",
+        "## " + ("Long Messages (>50 chars, highest weight: viewpoints/emotions/explanations)" if is_en else "长消息（>50字，权重最高：观点/情绪/解释）"),
         "",
     ]
 
@@ -566,7 +582,7 @@ def format_output(target_name: str, classified: dict, include_context: bool = Tr
     lines += [
         "---",
         "",
-        "## 冲突/情绪消息（争吵/道歉/分手/冷战相关）",
+        "## " + ("Conflict/Emotional Messages (arguments/apologies/breakup/silent-treatment)" if is_en else "冲突/情绪消息（争吵/道歉/分手/冷战相关）"),
         "",
     ]
 
@@ -578,7 +594,7 @@ def format_output(target_name: str, classified: dict, include_context: bool = Tr
     lines += [
         "---",
         "",
-        "## 甜蜜消息（表白/想念/日常关心）",
+        "## " + ("Sweet Messages (confessions/missing you/daily care)" if is_en else "甜蜜消息（表白/想念/日常关心）"),
         "",
     ]
 
@@ -590,7 +606,7 @@ def format_output(target_name: str, classified: dict, include_context: bool = Tr
     lines += [
         "---",
         "",
-        f"## 日常闲聊（风格参考，共 {len(classified['daily_messages'])} 条，全部输出）",
+        f"## {(f'Daily Chat (style reference, {len(classified['daily_messages'])} messages, full output)' if is_en else f'日常闲聊（风格参考，共 {len(classified['daily_messages'])} 条，全部输出）')}",
         "",
     ]
 
@@ -604,32 +620,33 @@ def format_output(target_name: str, classified: dict, include_context: bool = Tr
             "",
             "---",
             "",
-            f"## 完整对话（共 {len(all_msgs)} 条，按时间顺序，全部输出）",
-            "（格式：[时间] 发送方: 内容）",
+            f"## {(f'Full Conversation ({len(all_msgs)} messages, chronological, full output)' if is_en else f'完整对话（共 {len(all_msgs)} 条，按时间顺序，全部输出）')}",
+            ("(Format: [time] sender: content)" if is_en else "（格式：[时间] 发送方: 内容）"),
             "",
         ]
         for msg in all_msgs:  # 不截断，全部输出
-            sender_label = target_name if msg["sender"] == "them" else "我"
+            sender_label = target_name if msg["sender"] == "them" else i_label
             ts = f"[{msg['timestamp']}] " if msg.get("timestamp") else ""
             lines.append(f"{ts}{sender_label}: {msg['content']}")
 
     return "\n".join(lines)
 
 
-def print_contact_list(contacts: list[dict], is_imessage: bool = False):
+def print_contact_list(contacts: list[dict], is_imessage: bool = False, language: str = "zh"):
     """打印联系人列表"""
+    is_en = normalize_language(language) == "en"
     if not contacts:
-        print("未找到联系人数据")
+        print("No contacts found" if is_en else "未找到联系人数据")
         return
     if is_imessage:
-        print(f"找到 {len(contacts)} 个 iMessage 联系人：\n")
-        print(f"{'Handle (手机号/Apple ID)':<45} {'消息数':<10}")
+        print((f"Found {len(contacts)} iMessage contacts:\n" if is_en else f"找到 {len(contacts)} 个 iMessage 联系人：\n"))
+        print(f"{'Handle (Phone/Apple ID)' if is_en else 'Handle (手机号/Apple ID)':<45} {'Messages' if is_en else '消息数':<10}")
         print("-" * 55)
         for c in contacts:
             print(f"{c['handle']:<45} {c['count']:<10}")
     else:
-        print(f"找到 {len(contacts)} 个联系人：\n")
-        print(f"{'微信ID':<30} {'备注名':<20} {'昵称':<20}")
+        print((f"Found {len(contacts)} contacts:\n" if is_en else f"找到 {len(contacts)} 个联系人：\n"))
+        print(f"{'WeChat ID' if is_en else '微信ID':<30} {'Remark' if is_en else '备注名':<20} {'Nickname' if is_en else '昵称':<20}")
         print("-" * 70)
         for c in contacts:
             print(f"{c['wxid']:<30} {c['remark']:<20} {c['nickname']:<20}")
@@ -639,7 +656,7 @@ def print_contact_list(contacts: list[dict], is_imessage: bool = False):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="聊天记录解析器（微信 + iMessage）",
+        description="Chat parser (WeChat + iMessage)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例：
@@ -670,9 +687,12 @@ def main():
     parser.add_argument("--list-contacts", action="store_true", help="列出所有联系人")
     parser.add_argument("--no-context", action="store_true", help="不包含完整对话片段")
     parser.add_argument("--json", action="store_true", help="以 JSON 格式输出原始消息")
+    parser.add_argument("--lang", choices=["zh", "en"], default="zh", help="CLI/output language")
 
     args = parser.parse_args()
-    source_label = "iMessage" if args.imessage else "微信"
+    global CLI_LANG
+    CLI_LANG = normalize_language(args.lang)
+    source_label = "iMessage" if args.imessage else ("WeChat" if CLI_LANG == "en" else "微信")
 
     # ── iMessage 模式 ──────────────────────────────────────────────────────────
     if args.imessage:
@@ -681,23 +701,23 @@ def main():
             default_path = Path.home() / "Library" / "Messages" / "chat.db"
             if default_path.exists():
                 args.db = str(default_path)
-                print(f"使用默认 iMessage 数据库：{args.db}")
+                print(tr(f"使用默认 iMessage 数据库：{args.db}", f"Using default iMessage database: {args.db}"))
             else:
-                print("错误：未找到 iMessage 数据库，请用 --db 指定路径", file=sys.stderr)
-                print("默认路径：~/Library/Messages/chat.db", file=sys.stderr)
-                print("注意：需要在系统偏好设置中给终端授权「完全磁盘访问权限」", file=sys.stderr)
+                print(tr("错误：未找到 iMessage 数据库，请用 --db 指定路径", "Error: iMessage database not found. Please provide --db."), file=sys.stderr)
+                print(tr("默认路径：~/Library/Messages/chat.db", "Default path: ~/Library/Messages/chat.db"), file=sys.stderr)
+                print(tr("注意：需要在系统偏好设置中给终端授权「完全磁盘访问权限」", "Note: grant Full Disk Access to terminal/Python in macOS settings."), file=sys.stderr)
                 sys.exit(1)
 
         if args.list_contacts:
             contacts = list_imessage_contacts(args.db)
-            print_contact_list(contacts, is_imessage=True)
+            print_contact_list(contacts, is_imessage=True, language=CLI_LANG)
             return
 
         if not args.target:
-            print("错误：请指定 --target（手机号或 Apple ID）", file=sys.stderr)
+            print(tr("错误：请指定 --target（手机号或 Apple ID）", "Error: please provide --target (phone number or Apple ID)."), file=sys.stderr)
             sys.exit(1)
 
-        print(f"从 iMessage 数据库提取：{args.db}")
+        print(tr(f"从 iMessage 数据库提取：{args.db}", f"Extracting from iMessage database: {args.db}"))
         messages = extract_imessage_messages(args.db, args.target)
 
     # ── 微信模式 ───────────────────────────────────────────────────────────────
@@ -705,67 +725,67 @@ def main():
         # 列出联系人
         if args.list_contacts:
             if not args.db_dir:
-                print("错误：--list-contacts 需要 --db-dir", file=sys.stderr)
+                print(tr("错误：--list-contacts 需要 --db-dir", "Error: --list-contacts requires --db-dir."), file=sys.stderr)
                 sys.exit(1)
             contacts = list_contacts(args.db_dir)
-            print_contact_list(contacts, is_imessage=False)
+            print_contact_list(contacts, is_imessage=False, language=CLI_LANG)
             return
 
         if not args.target:
-            print("错误：请指定 --target（目标联系人名称）", file=sys.stderr)
+            print(tr("错误：请指定 --target（目标联系人名称）", "Error: please provide --target (contact name)."), file=sys.stderr)
             sys.exit(1)
 
         messages = []
 
         if args.txt:
-            print(f"从文本文件解析：{args.txt}")
+            print(tr(f"从文本文件解析：{args.txt}", f"Parsing from text export: {args.txt}"))
             messages = parse_txt_export(args.txt, args.target)
 
         elif args.db:
-            print(f"从单个数据库解析：{args.db}")
+            print(tr(f"从单个数据库解析：{args.db}", f"Parsing from single database: {args.db}"))
             target_wxid = find_contact_wxid(args.db_dir, args.target) if args.db_dir else None
             messages = extract_messages_from_db(args.db, target_wxid)
 
         elif args.db_dir:
             target_wxid = find_contact_wxid(args.db_dir, args.target)
             if target_wxid:
-                print(f"找到联系人 wxid：{target_wxid}")
+                print(tr(f"找到联系人 wxid：{target_wxid}", f"Matched contact wxid: {target_wxid}"))
             else:
-                print(f"警告：未找到 '{args.target}' 的精确匹配", file=sys.stderr)
-            print(f"从目录解析：{args.db_dir}")
+                print(tr(f"警告：未找到 '{args.target}' 的精确匹配", f"Warning: no exact match found for '{args.target}'."), file=sys.stderr)
+            print(tr(f"从目录解析：{args.db_dir}", f"Parsing from directory: {args.db_dir}"))
             messages = extract_messages_from_dir(args.db_dir, target_wxid)
 
         else:
-            print("错误：请指定 --db-dir 或 --db 或 --txt（或加 --imessage 使用 iMessage 模式）", file=sys.stderr)
+            print(tr("错误：请指定 --db-dir 或 --db 或 --txt（或加 --imessage 使用 iMessage 模式）", "Error: provide --db-dir, --db, or --txt (or use --imessage mode)."), file=sys.stderr)
             sys.exit(1)
 
     target_name = args.target
 
     if not messages:
-        print(f"警告：未找到消息", file=sys.stderr)
+        print(tr("警告：未找到消息", "Warning: no messages found."), file=sys.stderr)
         if not args.imessage and args.db_dir:
-            print("提示：", file=sys.stderr)
-            print("  1. 运行 --list-contacts 查看所有联系人的精确名称", file=sys.stderr)
-            print("  2. 确认数据库已正确解密（运行 wechat_decryptor.py）", file=sys.stderr)
+            print(tr("提示：", "Tips:"), file=sys.stderr)
+            print(tr("  1. 运行 --list-contacts 查看所有联系人的精确名称", "  1. Run --list-contacts to get exact contact names."), file=sys.stderr)
+            print(tr("  2. 确认数据库已正确解密（运行 wechat_decryptor.py）", "  2. Confirm databases are decrypted (run wechat_decryptor.py)."), file=sys.stderr)
         sys.exit(1)
 
     their_count = sum(1 for m in messages if m["sender"] == "them")
-    print(f"\n提取完成：共 {len(messages)} 条消息，其中 TA 发出 {their_count} 条")
+    print(tr(f"\n提取完成：共 {len(messages)} 条消息，其中 TA 发出 {their_count} 条", f"\nExtraction completed: {len(messages)} total messages, {their_count} sent by TA"))
 
     if their_count < 200:
-        print(f"⚠️  警告：TA 的消息只有 {their_count} 条，样本偏少，生成的人格可信度较低")
+        print(tr(f"⚠️  警告：TA 的消息只有 {their_count} 条，样本偏少，生成的人格可信度较低", f"⚠️  Warning: TA only has {their_count} messages. Sample size is small and persona reliability may be low."))
 
     # 输出
     if args.json:
         output_content = json.dumps(messages, ensure_ascii=False, indent=2)
     else:
         classified = classify_messages(messages, target_name)
-        output_content = format_output(target_name, classified, include_context=not args.no_context, source=source_label)
+        output_content = format_output(target_name, classified, include_context=not args.no_context, source=source_label, language=CLI_LANG)
 
     if args.output:
         with open(args.output, "w", encoding="utf-8") as f:
             f.write(output_content)
-        print(f"已输出到：{args.output}")
+        print(tr(f"已输出到：{args.output}", f"Output written to: {args.output}"))
     else:
         print(output_content)
 

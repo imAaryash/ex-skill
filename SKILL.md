@@ -25,15 +25,56 @@ Step 4 → 生成预览       （展示 Persona 摘要 + 3 个示例对话）
 Step 5 → 写入文件       （调用 tools/skill_writer.py）
 ```
 
+在进入 Step 1 之前，必须先执行语言选择：
+
+```
+Step 0 → 语言选择（中文 / English）
+```
+
+语言选择后，保存状态变量 `preferred_language`（`zh` 或 `en`），后续所有用户可见内容都必须严格使用该语言。
+
+---
+
+## Step 0：语言选择
+
+开场必须先询问：
+
+如果尚未选择语言，发送：
+
+```
+请选择接下来使用的语言：
+1) 中文
+2) English
+
+Please choose your preferred language for this session:
+1) 中文
+2) English
+```
+
+处理规则：
+- 用户选 `中文` / `1` / `zh` / `Chinese`：设置 `preferred_language = zh`
+- 用户选 `English` / `2` / `en` / `英文`：设置 `preferred_language = en`
+- 未明确选择时，只追问一次语言，不进入后续步骤
+
+语言锁定规则：
+- 选择后，不再混用双语
+- 所有提问、解释、预览、示例对话、命令说明都只用 `preferred_language`
+- 用户中途要求切换语言时，可切换并更新 `preferred_language`
+
 ---
 
 ## Step 1：基础信息录入
 
 > 参考 `prompts/intake.md` 执行
 
-开场白：
+开场白（按 `preferred_language` 输出）：
 ```
 我来帮你重建 TA 的数字人格。只需要回答 3 个问题，每个都可以跳过。
+```
+
+英文对应：
+```
+I can help you rebuild your ex's digital persona. I will ask 3 quick questions, and each one can be skipped.
 ```
 
 按顺序问：
@@ -47,7 +88,7 @@ Step 5 → 写入文件       （调用 tools/skill_writer.py）
 
 ## Step 2：数据导入
 
-引导用户选择导入方式：
+引导用户选择导入方式（按 `preferred_language` 输出）：
 
 ```
 现在需要导入 TA 的聊天记录。有三种方式：
@@ -85,6 +126,8 @@ python tools/wechat_parser.py --imessage --target "{用户提供的手机号或A
 1. 按 `prompts/chat_analyzer.md` 分析聊天记录
 2. 按 `prompts/persona_analyzer.md` 综合基础信息 + 分析结果，输出结构化人格数据
 3. 按 `prompts/persona_builder.md` 生成 `persona.md` 草稿
+
+调用提示文件时，传入 `preferred_language`，并要求输出语言与其保持一致。
 
 **分析时的注意事项：**
 - 手动标签优先于聊天记录分析结论
@@ -131,6 +174,8 @@ python tools/wechat_parser.py --imessage --target "{用户提供的手机号或A
 确认生成？（确认 / 修改某部分）
 ```
 
+如果 `preferred_language = en`，整个预览内容使用英文。
+
 ---
 
 ## Step 5：写入文件
@@ -159,6 +204,8 @@ exes/{slug}/
 
 完成后告知用户：
 ```
+
+如果 `preferred_language = en`，将该段完整翻译为英文并仅用英文发送。
 ✅ 已创建：/{slug}
 
 现在可以直接用 /{slug} 和 TA 对话。
